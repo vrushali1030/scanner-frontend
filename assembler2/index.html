@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Assembler 2 Scan</title>
+  <title>Assembler 1 Scan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
@@ -115,21 +115,27 @@
       return;
     }
 
-    fetch("https://scanner-backend-9y2c.onrender.com/submit-scan/assembler2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cabinet, order, timestamp })
-    })
+    fetch("https://scanner-backend-9y2c.onrender.com/submit-scan/assembler1", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+    cabinet: cabinet,
+    order: order,
+    timestamp: timestamp,
+  })
+})
+
     .then(response => response.text())
     .then(text => {
-      if (text.includes("Success")) {
-        alert("✅ Scan submitted!");
-        document.getElementById("cabinet-barcode").value = '';
-        document.getElementById("order-barcode").value = '';
-        document.getElementById("timestamp").value = getArizonaTimestamp();
-      } else {
-        alert("❌ Server error: " + text);
-      }
+    if (text.includes("Scan saved")) {
+  alert("✅ Scan submitted!");
+  document.getElementById("cabinet-barcode").value = '';
+  document.getElementById("order-barcode").value = '';
+  document.getElementById("timestamp").value = getArizonaTimestamp();
+  } else {
+  alert("❌ Server error: " + text);
+}
+
     })
     .catch(error => {
       alert("❌ Network error: " + error.message);
