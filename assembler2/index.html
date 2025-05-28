@@ -2,10 +2,141 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Assembler 2 Scan</title>
+  <title>Assembler 1 Scan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .form-container {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 400px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #reader {
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Assembler 2</h1>
-  <p>This is a placeholder page.</p>
+
+<div class="form-container">
+  <h2>Assembler 1</h2>
+
+  <input type="text" id="cabinet-barcode" placeholder="Cabinet Barcode" readonly>
+  <button onclick="startScanner('cabinet-barcode')">📷 Scan Cabinet</button>
+
+  <input type="text" id="order-barcode" placeholder="Order Number Barcode" readonly>
+  <button onclick="startScanner('order-barcode')">📷 Scan Order</button>
+
+  <input type="datetime-local" id="timestamp" readonly>
+  <button onclick="submitScan()">Submit Scan</button>
+
+  <div id="reader"></div>
+</div>
+
+<script>
+  let currentFieldId = '';
+
+  function startScanner(fieldId) {
+    currentFieldId = fieldId;
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        document.getElementById(currentFieldId).value = decodedText;
+        html5QrCode.stop().then(() => {
+          document.getElementById("reader").innerHTML = "";
+        });
+      }
+    ).catch(err => {
+      alert("Camera access denied or unavailable.");
+    });
+  }
+
+  function getArizonaTimestamp() {
+    const now = new Date();
+    const options = {
+      timeZone: 'America/Phoenix',
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    const formatter = new Intl.DateTimeFormat('en-CA', options);
+    const parts = formatter.formatToParts(now);
+    const date = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+    const time = `${parts.find(p => p.type === 'hour').value}:${parts.find(p => p.type === 'minute').value}`;
+    return `${date}T${time}`;
+  }
+
+  window.onload = () => {
+    document.getElementById("timestamp").value = getArizonaTimestamp();
+  };
+
+  function submitScan() {
+    const cabinet = document.getElementById("cabinet-barcode").value;
+    const order = document.getElementById("order-barcode").value;
+    const timestamp = getArizonaTimestamp();
+
+    if (!cabinet || !order) {
+      alert("Please scan both barcodes.");
+      return;
+    }
+
+    fetch("https://scanner-backend-9y2c.onrender.com/submit-scan/assembler2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cabinet, order, timestamp })
+    })
+    .then(response => response.text())
+    .then(text => {
+      if (text.includes("Success")) {
+        alert("✅ Scan submitted!");
+        document.getElementById("cabinet-barcode").value = '';
+        document.getElementById("order-barcode").value = '';
+        document.getElementById("timestamp").value = getArizonaTimestamp();
+      } else {
+        alert("❌ Server error: " + text);
+      }
+    })
+    .catch(error => {
+      alert("❌ Network error: " + error.message);
+      console.error(error);
+    });
+  }
+</script>
+
 </body>
 </html>
