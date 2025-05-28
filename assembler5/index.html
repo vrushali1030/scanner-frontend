@@ -122,14 +122,15 @@
     })
     .then(response => response.text())
     .then(text => {
-      if (text.includes("Success")) {
-        alert("✅ Scan submitted!");
-        document.getElementById("cabinet-barcode").value = '';
-        document.getElementById("order-barcode").value = '';
-        document.getElementById("timestamp").value = getArizonaTimestamp();
-      } else {
-        alert("❌ Server error: " + text);
-      }
+     if (text.trim() === "Scan saved.") {
+  alert("✅ Scan submitted!");
+  document.getElementById("cabinet-barcode").value = '';
+  document.getElementById("order-barcode").value = '';
+  document.getElementById("timestamp").value = getArizonaTimestamp();
+} else {
+  alert("❌ Server error: " + text);
+}
+
     })
     .catch(error => {
       alert("❌ Network error: " + error.message);
