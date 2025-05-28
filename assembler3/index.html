@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Assembler 1 Scan</title>
+  <title>Assembler 3 Scan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
@@ -49,7 +49,7 @@
 <body>
 
 <div class="form-container">
-  <h2>Assembler 1</h2>
+  <h2>Assembler 3</h2>
 
   <input type="text" id="cabinet-barcode" placeholder="Cabinet Barcode" readonly>
   <button onclick="startScanner('cabinet-barcode')">📷 Scan Cabinet</button>
@@ -115,14 +115,12 @@
       return;
     }
 
-    fetch("https://scanner-backend-9y2c.onrender.com/submit-scan/assembler3", {
+    fetch("https://scanner-backend-9y2c.onrender.com/submit-scan/assembler2", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cabinet, order, timestamp })
     })
     .then(response => response.text())
-
-      
     .then(text => {
       if (text.includes("Success")) {
         alert("✅ Scan submitted!");
