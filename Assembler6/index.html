@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Assembler 1 Scan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 40px;
+    }
+
+    .form-container {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    #scan-count, #download-btn {
+      margin-top: 15px;
+      font-size: 1.2em;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Assembler 1 Barcode Scanner</h2>
+    <div id="reader" style="width: 100%;"></div>
+    <div id="scan-count">Total Scans: 0</div>
+    <button id="download-btn">Download Scan Log (CSV)</button>
+  </div>
+
+  <script>
+    let scanCount = 0;
+    let scanLog = [];
+
+    const assemblerName = "assembler1"; // update per assembler
+
+    const html5QrCode = new Html5Qrcode("reader");
+
+    function updateScanCount() {
+      document.getElementById("scan-count").textContent = `Total Scans: ${scanCount}`;
+    }
+
+    function downloadCSV() {
+      const headers = ["Barcode", "Timestamp"];
+      const rows = [headers, ...scanLog];
+      const csvContent = rows.map(e => e.join(",")).join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${assemblerName}_scan_log.csv`);
+      link.click();
+    }
+
+    document.getElementById("download-btn").addEventListener("click", downloadCSV);
+
+    const config = { fps: 10, qrbox: 250 };
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText, decodedResult) => {
+        // Prevent duplicate scan
+        if (scanLog.length && scanLog[scanLog.length - 1][0] === decodedText) return;
+
+        const timestamp = new Date().toISOString();
+        scanCount++;
+        updateScanCount();
+        scanLog.push([decodedText, timestamp]);
+
+        // Send to backend
+        fetch("https://scanner-backend-9y2c.onrender.com/submit-scan/assembler6", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            barcode: decodedText,
+            timestamp: timestamp
+          })
+        }).catch(err => {
+          console.error("Failed to send to backend:", err);
+        });
+      },
+      error => {
+        // Handle scan errors (optional)
+      }
+    ).catch(err => {
+      console.error("Camera start failed:", err);
+    });
+  </script>
+</body>
+</html>
