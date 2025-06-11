@@ -4,15 +4,16 @@
   <meta charset="UTF-8">
   <title>Assembler 1 Scan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f2f2f2;
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
-      padding-top: 40px;
+      height: 100vh;
+      margin: 0;
     }
 
     .form-container {
@@ -21,89 +22,152 @@
       border-radius: 12px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
       width: 90%;
-      max-width: 500px;
-      text-align: center;
+      max-width: 400px;
     }
 
-    #scan-count, #download-btn {
-      margin-top: 15px;
-      font-size: 1.2em;
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
     }
 
     button {
-      padding: 10px 20px;
-      font-size: 1em;
-      margin-top: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #reader {
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <div class="form-container">
-    <h2>Assembler 1 Barcode Scanner</h2>
-    <div id="reader" style="width: 100%;"></div>
-    <div id="scan-count">Total Scans: 0</div>
-    <button id="download-btn">Download Scan Log (CSV)</button>
-  </div>
 
-  <script>
-    let scanCount = 0;
-    let scanLog = [];
+<div class="form-container">
+  <h2>Assembler 1</h2>
 
-    const assemblerName = "assembler1"; // update per assembler
+  <input type="text" id="cabinet-barcode" placeholder="Cabinet Barcode" readonly>
+  <button onclick="startScanner('cabinet-barcode')">📷 Scan Cabinet</button>
 
+  <input type="text" id="order-barcode" placeholder="Order Number Barcode" readonly>
+  <button onclick="startScanner('order-barcode')">📷 Scan Order</button>
+
+  <input type="datetime-local" id="timestamp" readonly>
+  <button onclick="submitScan()">Submit Scan</button>
+
+  <p id="scan-count">Total Scans: 0</p>
+  <button onclick="downloadCSV()">⬇️ Download Scan Log (CSV)</button>
+
+  <div id="reader"></div>
+</div>
+
+
+<script>
+  let currentFieldId = '';
+  let scanCount = 0;
+  let localScanLog = [];
+
+  function startScanner(fieldId) {
+    currentFieldId = fieldId;
     const html5QrCode = new Html5Qrcode("reader");
-
-    function updateScanCount() {
-      document.getElementById("scan-count").textContent = `Total Scans: ${scanCount}`;
-    }
-
-    function downloadCSV() {
-      const headers = ["Barcode", "Timestamp"];
-      const rows = [headers, ...scanLog];
-      const csvContent = rows.map(e => e.join(",")).join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `${assemblerName}_scan_log.csv`);
-      link.click();
-    }
-
-    document.getElementById("download-btn").addEventListener("click", downloadCSV);
-
-    const config = { fps: 10, qrbox: 250 };
-
     html5QrCode.start(
       { facingMode: "environment" },
-      config,
-      (decodedText, decodedResult) => {
-        // Prevent duplicate scan
-        if (scanLog.length && scanLog[scanLog.length - 1][0] === decodedText) return;
-
-        const timestamp = new Date().toISOString();
-        scanCount++;
-        updateScanCount();
-        scanLog.push([decodedText, timestamp]);
-
-        // Send to backend
-        fetch("https://scanner-backend-9y2c.onrender.com/submit-scan/assembler6", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            barcode: decodedText,
-            timestamp: timestamp
-          })
-        }).catch(err => {
-          console.error("Failed to send to backend:", err);
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        document.getElementById(currentFieldId).value = decodedText;
+        html5QrCode.stop().then(() => {
+          document.getElementById("reader").innerHTML = "";
         });
-      },
-      error => {
-        // Handle scan errors (optional)
       }
     ).catch(err => {
-      console.error("Camera start failed:", err);
+      alert("Camera access denied or unavailable.");
     });
-  </script>
+  }
+
+  function getArizonaTimestamp() {
+    const now = new Date();
+    const options = {
+      timeZone: 'America/Phoenix',
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    const formatter = new Intl.DateTimeFormat('en-CA', options);
+    const parts = formatter.formatToParts(now);
+    const date = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+    const time = `${parts.find(p => p.type === 'hour').value}:${parts.find(p => p.type === 'minute').value}`;
+    return `${date}T${time}`;
+  }
+
+  window.onload = () => {
+    document.getElementById("timestamp").value = getArizonaTimestamp();
+  };
+
+  function submitScan() {
+    const cabinet = document.getElementById("cabinet-barcode").value;
+    const order = document.getElementById("order-barcode").value;
+    const timestamp = getArizonaTimestamp();
+
+    if (!cabinet || !order) {
+      alert("Please scan both barcodes.");
+      return;
+    }
+
+    fetch("https://scanner-backend-9y2c.onrender.com/submit-scan/assembler1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cabinet, order, timestamp })
+    })
+    .then(response => response.text())
+    .then(text => {
+      if (text.includes("Scan saved")) {
+        alert("✅ Scan submitted!");
+
+        // Clear fields
+        document.getElementById("cabinet-barcode").value = '';
+        document.getElementById("order-barcode").value = '';
+        document.getElementById("timestamp").value = getArizonaTimestamp();
+
+        // ✅ Update scan count + log
+        scanCount++;
+        localScanLog.push([cabinet, order, timestamp]);
+        document.getElementById("scan-count").textContent = `Total Scans: ${scanCount}`;
+      } else {
+        alert("❌ Server error: " + text);
+      }
+    })
+    .catch(error => {
+      alert("❌ Network error: " + error.message);
+      console.error(error);
+    });
+  }
+
+  function downloadCSV() {
+    if (localScanLog.length === 0) {
+      alert("No scans to download yet!");
+      return;
+    }
+
+    const headers = ["Cabinet Barcode", "Order Barcode", "Timestamp"];
+    const csvRows = [headers, ...localScanLog];
+    const csvContent = csvRows.map(row => row.join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.setAttribute("href", URL.createObjectURL(blob));
+    link.setAttribute("download", "assembler1_scan_log.csv");
+    link.click();
+  }
+</script>
+
+
 </body>
 </html>
