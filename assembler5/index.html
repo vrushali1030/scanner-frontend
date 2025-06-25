@@ -46,12 +46,16 @@
 <div class="form-container">
   <h2>Assembler 5</h2>
 
-  <input type="text" id="cabinet-barcode" placeholder="Scan Cabinet Barcode">
-  <input type="text" id="order-barcode" placeholder="Scan Order Number Barcode">
+<input type="text" id="cabinet-barcode" placeholder="Cabinet Barcode">
+<button onclick="document.getElementById('cabinet-barcode').focus()">📷 Focus Cabinet</button>
+
+<input type="text" id="order-barcode" placeholder="Order Number Barcode">
+<button onclick="document.getElementById('order-barcode').focus()">📷 Focus Order</button>
+
   <input type="datetime-local" id="timestamp" readonly>
   <button onclick="submitScan()">Submit Scan</button>
 </div>
-
+  
 <script>
   function getArizonaTimestamp() {
     const now = new Date();
