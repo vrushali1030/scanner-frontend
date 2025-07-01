@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Assembler 4 Scan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -40,10 +39,6 @@
       border: none;
       cursor: pointer;
     }
-
-    #reader {
-      margin-top: 20px;
-    }
   </style>
 </head>
 <body>
@@ -51,38 +46,17 @@
 <div class="form-container">
   <h2>Assembler 4</h2>
 
-  <input type="text" id="cabinet-barcode" placeholder="Cabinet Barcode" readonly>
-  <button onclick="startScanner('cabinet-barcode')">📷 Scan Cabinet</button>
+<input type="text" id="cabinet-barcode" placeholder="Cabinet Barcode">
+<button onclick="document.getElementById('cabinet-barcode').focus()">📷 Focus Cabinet</button>
 
-  <input type="text" id="order-barcode" placeholder="Order Number Barcode" readonly>
-  <button onclick="startScanner('order-barcode')">📷 Scan Order</button>
+<input type="text" id="order-barcode" placeholder="Order Number Barcode">
+<button onclick="document.getElementById('order-barcode').focus()">📷 Focus Order</button>
 
   <input type="datetime-local" id="timestamp" readonly>
   <button onclick="submitScan()">Submit Scan</button>
-
-  <div id="reader"></div>
 </div>
-
+  
 <script>
-  let currentFieldId = '';
-
-  function startScanner(fieldId) {
-    currentFieldId = fieldId;
-    const html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      (decodedText) => {
-        document.getElementById(currentFieldId).value = decodedText;
-        html5QrCode.stop().then(() => {
-          document.getElementById("reader").innerHTML = "";
-        });
-      }
-    ).catch(err => {
-      alert("Camera access denied or unavailable.");
-    });
-  }
-
   function getArizonaTimestamp() {
     const now = new Date();
     const options = {
@@ -103,11 +77,26 @@
 
   window.onload = () => {
     document.getElementById("timestamp").value = getArizonaTimestamp();
+    document.getElementById("cabinet-barcode").focus();
+
+    // Auto-focus to order field after scanning cabinet
+    document.getElementById("cabinet-barcode").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        document.getElementById("order-barcode").focus();
+      }
+    });
+
+    // Auto-submit when scanning order
+    document.getElementById("order-barcode").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        submitScan();
+      }
+    });
   };
 
   function submitScan() {
-    const cabinet = document.getElementById("cabinet-barcode").value;
-    const order = document.getElementById("order-barcode").value;
+    const cabinet = document.getElementById("cabinet-barcode").value.trim();
+    const order = document.getElementById("order-barcode").value.trim();
     const timestamp = getArizonaTimestamp();
 
     if (!cabinet || !order) {
@@ -123,15 +112,14 @@
     .then(response => response.text())
     .then(text => {
       if (text.trim() === "Scan saved.") {
-  alert("✅ Scan submitted!");
-  document.getElementById("cabinet-barcode").value = '';
-  document.getElementById("order-barcode").value = '';
-  document.getElementById("timestamp").value = getArizonaTimestamp();
-} else {
-  alert("❌ Server error: " + text);
-}
-
-
+        alert("✅ Scan submitted!");
+        document.getElementById("cabinet-barcode").value = '';
+        document.getElementById("order-barcode").value = '';
+        document.getElementById("timestamp").value = getArizonaTimestamp();
+        document.getElementById("cabinet-barcode").focus();
+      } else {
+        alert("❌ Server error: " + text);
+      }
     })
     .catch(error => {
       alert("❌ Network error: " + error.message);
